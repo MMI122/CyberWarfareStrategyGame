@@ -1,0 +1,188 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cyber-primary: #00ff88;
+  --cyber-secondary: #0088ff;
+  --cyber-dark: #0a0a0a;
+  --cyber-accent: #ff0088;
+  --cyber-warning: #ffaa00;
+  --cyber-danger: #ff0044;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #050505;
+  color: #e0e0e0;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #00ff88;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00cc6e;
+}
+
+/* Cyber glow effects */
+.cyber-glow {
+  box-shadow: 0 0 10px var(--cyber-primary), 0 0 20px var(--cyber-primary);
+}
+
+.cyber-glow-secondary {
+  box-shadow: 0 0 10px var(--cyber-secondary), 0 0 20px var(--cyber-secondary);
+}
+
+.cyber-glow-danger {
+  box-shadow: 0 0 10px var(--cyber-danger), 0 0 20px var(--cyber-danger);
+}
+
+/* Cyber text */
+.cyber-text {
+  font-family: 'JetBrains Mono', monospace;
+  text-shadow: 0 0 10px currentColor;
+}
+
+/* Glass morphism */
+.glass {
+  background: rgba(10, 10, 10, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+}
+
+/* Scan line effect */
+.scan-lines::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Button styles */
+.btn-cyber {
+  @apply px-6 py-3 font-mono font-semibold uppercase tracking-wider;
+  @apply bg-transparent border-2 border-cyber-primary text-cyber-primary;
+  @apply hover:bg-cyber-primary hover:text-black;
+  @apply transition-all duration-300 ease-in-out;
+  @apply focus:outline-none focus:ring-2 focus:ring-cyber-primary focus:ring-offset-2 focus:ring-offset-cyber-dark;
+}
+
+.btn-cyber-secondary {
+  @apply border-cyber-secondary text-cyber-secondary;
+  @apply hover:bg-cyber-secondary;
+}
+
+.btn-cyber-danger {
+  @apply border-cyber-danger text-cyber-danger;
+  @apply hover:bg-cyber-danger;
+}
+
+/* Card styles */
+.card-cyber {
+  @apply bg-cyber-dark/80 backdrop-blur-md;
+  @apply border border-cyber-primary/30;
+  @apply rounded-lg p-4;
+  @apply transition-all duration-300;
+}
+
+.card-cyber:hover {
+  @apply border-cyber-primary/60;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.1);
+}
+
+/* Network node styles */
+.network-node {
+  @apply rounded-full flex items-center justify-center;
+  @apply transition-all duration-200 cursor-pointer;
+}
+
+.network-node-normal {
+  @apply bg-cyber-secondary/20 border-2 border-cyber-secondary;
+}
+
+.network-node-compromised {
+  @apply bg-cyber-danger/20 border-2 border-cyber-danger;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.network-node-target {
+  @apply bg-cyber-primary/20 border-2 border-cyber-primary;
+}
+
+.network-node-selected {
+  @apply ring-4 ring-cyber-primary ring-offset-2 ring-offset-cyber-dark;
+}
+
+/* Terminal styles */
+.terminal {
+  @apply font-mono text-sm;
+  @apply bg-black/90 border border-cyber-primary/30;
+  @apply rounded-lg p-4;
+  line-height: 1.5;
+}
+
+.terminal-line {
+  @apply text-cyber-primary;
+}
+
+.terminal-line::before {
+  content: "> ";
+  @apply text-cyber-secondary;
+}
+
+/* Progress bar */
+.progress-cyber {
+  @apply h-2 bg-cyber-dark rounded-full overflow-hidden;
+}
+
+.progress-cyber-fill {
+  @apply h-full bg-gradient-to-r from-cyber-secondary to-cyber-primary;
+  @apply transition-all duration-300 ease-in-out;
+}
+
+/* Animation delays for staggered effects */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+/* Loading spinner */
+.cyber-spinner {
+  @apply w-8 h-8 border-2 border-cyber-primary border-t-transparent rounded-full;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
