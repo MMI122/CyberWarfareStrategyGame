@@ -122,9 +122,10 @@ export interface NetworkEdge {
 
 export interface GameAction {
   type: ActionType | string
-  player: Player
-  targetNodeId: string
-  timestamp: string
+  player?: Player
+  targetNodeId?: string
+  target_node?: number
+  timestamp?: string
 }
 
 export interface ActionResult {
@@ -133,21 +134,35 @@ export interface ActionResult {
   points_gained: number
 }
 
-// GameState for UI (matches backend response)
+// Valid action from API
+export interface ValidAction {
+  action_type: string
+  target_node: number
+  ap_cost: number
+  description: string
+}
+
+// GameState for UI (matches backend response - snake_case)
 export interface GameState {
   game_id: string
-  turn: number
-  phase: GamePhase
-  currentPlayer: Player
-  scores: {
+  turn_number: number
+  phase: string
+  current_player: string
+  attacker_score: number
+  defender_score: number
+  nodes: NetworkNode[]
+  valid_actions: ValidAction[]
+  game_over: boolean
+  winner: string | null
+  victory_condition: string | null
+  // Convenience getters (computed in UI)
+  currentPlayer?: Player
+  gameOver?: boolean
+  scores?: {
     attacker: number
     defender: number
   }
-  network: Network
-  valid_actions: GameAction[]
-  gameOver: boolean
-  winner: Player | null
-  victory_condition: string | null
+  network?: Network
 }
 
 // =============================================================================
@@ -161,10 +176,8 @@ export interface CreateGameRequest {
   ai_type: AIType
 }
 
-export interface CreateGameResponse {
-  game_id: string
-  state: GameState
-}
+// CreateGameResponse is the same as GameState since API returns GameState directly
+export type CreateGameResponse = GameState
 
 export interface ActionRequest {
   action_type: string
@@ -174,8 +187,9 @@ export interface ActionRequest {
 
 export interface ActionResultResponse {
   success: boolean
-  result: string
-  state: GameState
+  message: string
+  points_gained: number
+  game_state: GameState
 }
 
 export interface AIAgentInfo {

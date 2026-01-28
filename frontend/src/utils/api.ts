@@ -39,8 +39,8 @@ export const gameApi = {
   /**
    * Get game state by ID
    */
-  getGame: async (gameId: string): Promise<{ state: GameState }> => {
-    const response = await api.get<{ state: GameState }>(`/games/${gameId}`)
+  getGame: async (gameId: string): Promise<GameState> => {
+    const response = await api.get<GameState>(`/games/${gameId}`)
     return response.data
   },
   
@@ -52,14 +52,6 @@ export const gameApi = {
       action_type: action.type,
       target_node: action.targetNodeId,
     })
-    return response.data
-  },
-  
-  /**
-   * Reset a game
-   */
-  resetGame: async (gameId: string): Promise<{ state: GameState }> => {
-    const response = await api.post<{ state: GameState }>(`/games/${gameId}/reset`)
     return response.data
   },
   
@@ -123,9 +115,14 @@ export class GameWebSocket {
   
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const wsUrl = `${protocol}//${window.location.host}/ws/game/${this.gameId}`
+      // Use backend URL directly for WebSocket (Vite proxy doesn't always work well with WS)
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      // In development, connect directly to backend; in production, use same host
+      const isDev = window.location.hostname === 'localhost' && window.location.port === '3000'
+      const wsHost = isDev ? 'localhost:8000' : window.location.host
+      const wsUrl = `${wsProtocol}//${wsHost}/ws/game/${this.gameId}`
       
+      console.log('Connecting to WebSocket:', wsUrl)
       this.ws = new WebSocket(wsUrl)
       
       this.ws.onopen = () => {

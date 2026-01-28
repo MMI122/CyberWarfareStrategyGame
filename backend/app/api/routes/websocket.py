@@ -73,7 +73,9 @@ class ConnectionManager:
         """Send message to all connections in a game"""
         if game_id in self.game_connections:
             dead_connections = []
-            for connection in self.game_connections[game_id]:
+            # Create a copy of the set to avoid modification during iteration
+            connections = list(self.game_connections[game_id])
+            for connection in connections:
                 try:
                     await connection.send_json(message)
                 except Exception:

@@ -96,7 +96,7 @@ function HomePage() {
       const response = await gameApi.createGame(selectedTopology, selectedDifficulty)
       
       setGameId(response.game_id)
-      setGameState(response.state)
+      setGameState(response)
       
       // Navigate to game
       navigate('/game')

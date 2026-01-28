@@ -59,10 +59,10 @@ function ResearchPage() {
       try {
         // Create a new game
         const game = await gameApi.createGame('mesh', 'medium')
-        let state = game.state
+        let state = game
         let gameOver = false
         
-        while (!gameOver && state.turn < 100) {
+        while (!gameOver && state.turn_number < 100) {
           const startTime = Date.now()
           
           // Get AI move
@@ -78,21 +78,21 @@ function ResearchPage() {
           
           if (result.action) {
             const actionResult = await gameApi.performAction(game.game_id, result.action)
-            state = actionResult.state
+            state = actionResult.game_state
           }
           
-          if (state.gameOver) {
+          if (state.game_over) {
             gameOver = true
-            if (state.winner === 'attacker') {
+            if (state.winner === 'ATTACKER') {
               if (aiType === 'minmax') wins++
               else losses++
-            } else if (state.winner === 'defender') {
+            } else if (state.winner === 'DEFENDER') {
               if (aiType === 'deep_rl') wins++
               else losses++
             } else {
               draws++
             }
-            totalScore += state.scores?.attacker || 0
+            totalScore += state.attacker_score || 0
           }
         }
         
@@ -150,7 +150,7 @@ function ResearchPage() {
       
       for (let i = 0; i < numGames; i++) {
         const game = await gameApi.createGame('hybrid', 'hard')
-        let state = game.state
+        let state = game
         
         const match: TournamentMatch = {
           attacker: selectedAI1,
@@ -161,8 +161,8 @@ function ResearchPage() {
           defenderScore: 0
         }
         
-        while (!state.gameOver && state.turn < 100) {
-          const currentAI = state.currentPlayer === 'attacker' ? selectedAI1 : selectedAI2
+        while (!state.game_over && state.turn_number < 100) {
+          const currentAI = state.current_player === 'ATTACKER' ? selectedAI1 : selectedAI2
           
           let result
           if (currentAI === 'minmax') {
@@ -173,15 +173,15 @@ function ResearchPage() {
           
           if (result.action) {
             const actionResult = await gameApi.performAction(game.game_id, result.action)
-            state = actionResult.state
+            state = actionResult.game_state
           }
           
-          match.turns = state.turn
+          match.turns = state.turn_number
         }
         
         match.winner = state.winner
-        match.attackerScore = state.scores?.attacker || 0
-        match.defenderScore = state.scores?.defender || 0
+        match.attackerScore = state.attacker_score || 0
+        match.defenderScore = state.defender_score || 0
         
         setTournamentResults(prev => [...prev, match])
         setProgress(((i + 1) / numGames) * 100)

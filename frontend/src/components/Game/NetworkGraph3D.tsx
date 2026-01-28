@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { motion } from 'framer-motion'
-import { GameState, Node, Connection } from '@/types'
+import { GameState, NetworkNode } from '@/types'
 
 interface NetworkGraph3DProps {
   gameState: GameState
@@ -12,7 +12,7 @@ interface NetworkGraph3DProps {
 }
 
 interface NodeMeshProps {
-  node: Node
+  node: NetworkNode
   position: [number, number, number]
   isSelected: boolean
   isHovered: boolean
@@ -23,29 +23,27 @@ interface NodeMeshProps {
 interface ConnectionLineProps {
   start: [number, number, number]
   end: [number, number, number]
-  connection: Connection
+  isCompromised: boolean
 }
 
 // Get node color based on status and control
-function getNodeColor(node: Node): string {
-  if (node.isCompromised) return '#ff0040' // Red for compromised
-  if (node.controlledBy === 'defender') return '#00ff88' // Cyber primary for defender
-  if (node.controlledBy === 'attacker') return '#ff6b00' // Orange for attacker
-  if (node.isHoneypot) return '#8b5cf6' // Purple for honeypot
-  return '#0ea5e9' // Cyan for neutral
+function getNodeColor(node: NetworkNode): string {
+  if (node.is_compromised) return '#ff0040' // Red for compromised
+  if (node.node_type === 'HONEYPOT') return '#8b5cf6' // Purple for honeypot
+  if (node.node_type === 'FIREWALL') return '#00ff88' // Green for firewall
+  if (node.node_type === 'SERVER') return '#0ea5e9' // Cyan for server
+  if (node.node_type === 'DATABASE') return '#fbbf24' // Yellow for database
+  return '#6b7280' // Gray for others
 }
 
 // Calculate 3D positions for nodes using force-directed layout
-function calculateNodePositions(nodes: Node[]): Map<string, [number, number, number]> {
-  const positions = new Map<string, [number, number, number]>()
-  
-  // Simple spherical layout based on node criticality and type
-  const nodeArray = Object.values(nodes)
+function calculateNodePositions(nodes: NetworkNode[]): Map<number, [number, number, number]> {
+  const positions = new Map<number, [number, number, number]>()
   const radius = 5
   
-  nodeArray.forEach((node, index) => {
-    const angle = (index / nodeArray.length) * Math.PI * 2
-    const heightVariation = (node.criticality / 10) * 2 - 1
+  nodes.forEach((node, index) => {
+    const angle = (index / nodes.length) * Math.PI * 2
+    const heightVariation = (node.importance) * 2 - 1
     const radiusVariation = radius * (0.7 + Math.random() * 0.6)
     
     const x = Math.cos(angle) * radiusVariation
@@ -64,7 +62,7 @@ function NodeMesh({ node, position, isSelected, isHovered, onClick, onHover }: N
   const glowRef = useRef<THREE.Mesh>(null)
   
   const color = getNodeColor(node)
-  const size = 0.3 + (node.criticality / 10) * 0.3
+  const size = 0.3 + node.importance * 0.3
   
   useFrame((state) => {
     if (meshRef.current) {
@@ -121,10 +119,12 @@ function NodeMesh({ node, position, isSelected, isHovered, onClick, onHover }: N
         <Html distanceFactor={10} position={[0, size + 0.5, 0]}>
           <div className="bg-cyber-dark/90 border border-cyber-primary/50 rounded px-2 py-1 text-xs font-mono whitespace-nowrap">
             <div className="text-cyber-primary font-bold">{node.name}</div>
-            <div className="text-gray-400 text-[10px]">{node.type}</div>
+            <div className="text-gray-400 text-[10px]">{node.node_type}</div>
             <div className="flex gap-2 text-[10px]">
-              <span className="text-cyan-400">HP: {node.health}</span>
-              <span className="text-yellow-400">Crit: {node.criticality}</span>
+              <span className="text-cyan-400">Defense: {(node.defense_level * 100).toFixed(0)}%</span>
+              <span className={node.is_compromised ? 'text-red-400' : 'text-green-400'}>
+                {node.is_compromised ? 'COMPROMISED' : 'SECURE'}
+              </span>
             </div>
           </div>
         </Html>
@@ -134,22 +134,21 @@ function NodeMesh({ node, position, isSelected, isHovered, onClick, onHover }: N
 }
 
 // Connection line component
-function ConnectionLine({ start, end, connection }: ConnectionLineProps) {
+function ConnectionLine({ start, end, isCompromised }: ConnectionLineProps) {
   const points = useMemo(() => [
     new THREE.Vector3(...start),
     new THREE.Vector3(...end)
   ], [start, end])
   
-  const color = connection.isEncrypted ? '#00ff88' : '#0ea5e9'
-  const opacity = connection.bandwidth > 50 ? 0.8 : 0.4
+  const color = isCompromised ? '#ff0040' : '#00ff88'
   
   return (
     <Line
       points={points}
       color={color}
-      lineWidth={1 + connection.bandwidth / 50}
+      lineWidth={1.5}
       transparent
-      opacity={opacity}
+      opacity={0.6}
     />
   )
 }
@@ -213,21 +212,37 @@ function CameraController() {
 
 // Main scene component
 function NetworkScene({ gameState, onNodeClick, selectedNode }: NetworkGraph3DProps) {
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null)
+  const [hoveredNode, setHoveredNode] = useState<number | null>(null)
   
   const nodePositions = useMemo(() => {
-    if (!gameState?.network?.nodes) return new Map()
-    return calculateNodePositions(
-      Object.values(gameState.network.nodes)
-    )
-  }, [gameState?.network])
+    if (!gameState?.nodes || gameState.nodes.length === 0) return new Map()
+    return calculateNodePositions(gameState.nodes)
+  }, [gameState?.nodes])
   
-  if (!gameState?.network) {
+  if (!gameState?.nodes || gameState.nodes.length === 0) {
     return null
   }
   
-  const nodes = Object.values(gameState.network.nodes)
-  const connections = gameState.network.connections
+  const nodes = gameState.nodes
+  
+  // Build connections from node.connected_nodes
+  const connections: { source: number; target: number; isCompromised: boolean }[] = []
+  const addedConnections = new Set<string>()
+  
+  nodes.forEach(node => {
+    node.connected_nodes.forEach(targetId => {
+      const key = [Math.min(node.id, targetId), Math.max(node.id, targetId)].join('-')
+      if (!addedConnections.has(key)) {
+        addedConnections.add(key)
+        const targetNode = nodes.find(n => n.id === targetId)
+        connections.push({
+          source: node.id,
+          target: targetId,
+          isCompromised: node.is_compromised || (targetNode?.is_compromised ?? false)
+        })
+      }
+    })
+  })
   
   return (
     <>
@@ -242,16 +257,16 @@ function NetworkScene({ gameState, onNodeClick, selectedNode }: NetworkGraph3DPr
       
       {/* Connections */}
       {connections.map((conn, index) => {
-        const startPos = nodePositions.get(conn.sourceId)
-        const endPos = nodePositions.get(conn.targetId)
+        const startPos = nodePositions.get(conn.source)
+        const endPos = nodePositions.get(conn.target)
         if (!startPos || !endPos) return null
         
         return (
           <ConnectionLine
-            key={`${conn.sourceId}-${conn.targetId}-${index}`}
+            key={`${conn.source}-${conn.target}-${index}`}
             start={startPos}
             end={endPos}
-            connection={conn}
+            isCompromised={conn.isCompromised}
           />
         )
       })}
@@ -266,9 +281,9 @@ function NetworkScene({ gameState, onNodeClick, selectedNode }: NetworkGraph3DPr
             key={node.id}
             node={node}
             position={position}
-            isSelected={selectedNode === node.id}
+            isSelected={selectedNode === String(node.id)}
             isHovered={hoveredNode === node.id}
-            onClick={() => onNodeClick?.(node.id)}
+            onClick={() => onNodeClick?.(String(node.id))}
             onHover={(hovered) => setHoveredNode(hovered ? node.id : null)}
           />
         )

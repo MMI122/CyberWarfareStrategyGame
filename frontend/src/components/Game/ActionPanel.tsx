@@ -134,7 +134,7 @@ function ActionPanel({
     setTargetNode(selectedNode)
   }, [selectedNode])
   
-  const isAttackerTurn = gameState?.currentPlayer === 'attacker'
+  const isAttackerTurn = gameState?.current_player === 'ATTACKER'
   const availableActions = actionOptions.filter(a => a.isAttacker === isAttackerTurn)
   
   const handleActionClick = (actionType: ActionType) => {
@@ -146,9 +146,8 @@ function ActionPanel({
     
     const action: GameAction = {
       type: selectedAction,
-      player: gameState.currentPlayer,
+      target_node: parseInt(targetNode),
       targetNodeId: targetNode,
-      timestamp: new Date().toISOString()
     }
     
     onActionSelect(action)
@@ -156,6 +155,9 @@ function ActionPanel({
   }
   
   const canExecuteAction = selectedAction && targetNode && isPlayerTurn && !isProcessing
+  
+  // Find the selected node in the nodes array
+  const selectedNodeInfo = gameState?.nodes?.find(n => String(n.id) === selectedNode)
   
   return (
     <motion.div 
@@ -187,14 +189,14 @@ function ActionPanel({
       </div>
       
       {/* Selected Node Info */}
-      {selectedNode && gameState?.network?.nodes && (
+      {selectedNode && selectedNodeInfo && (
         <div className="mb-4 p-3 rounded-lg bg-cyber-dark/50 border border-cyber-primary/20">
           <div className="text-xs text-gray-400 mb-1">Selected Target</div>
           <div className="text-cyber-primary font-mono font-semibold">
-            {gameState.network.nodes[selectedNode]?.name || selectedNode}
+            {selectedNodeInfo.name}
           </div>
           <div className="text-xs text-gray-500 mt-1">
-            Type: {gameState.network.nodes[selectedNode]?.type || 'Unknown'}
+            Type: {selectedNodeInfo.node_type}
           </div>
         </div>
       )}

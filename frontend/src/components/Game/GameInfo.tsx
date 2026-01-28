@@ -83,19 +83,20 @@ function PlayerScore({ player, score, isActive, stats }: {
 function GameInfo({ gameState }: GameInfoProps) {
   if (!gameState) return null
   
-  const { 
-    currentPlayer, 
-    turn, 
-    scores,
-    network,
-    gameOver,
-    winner
-  } = gameState
+  // Use snake_case properties from API
+  const currentPlayer = gameState.current_player?.toLowerCase() as Player | undefined
+  const turn = gameState.turn_number || 0
+  const scores = {
+    attacker: gameState.attacker_score || 0,
+    defender: gameState.defender_score || 0
+  }
+  const gameOver = gameState.game_over || false
+  const winner = gameState.winner?.toLowerCase()
   
-  // Calculate stats
-  const nodes = network?.nodes ? Object.values(network.nodes) : []
-  const compromisedCount = nodes.filter(n => n.isCompromised).length
-  const securedCount = nodes.filter(n => n.controlledBy === 'defender' && !n.isCompromised).length
+  // Calculate stats from nodes array
+  const nodes = gameState.nodes || []
+  const compromisedCount = nodes.filter(n => n.is_compromised).length
+  const securedCount = nodes.filter(n => !n.is_compromised).length
   const totalNodes = nodes.length
   
   return (

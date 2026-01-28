@@ -41,9 +41,33 @@ function GamePage() {
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [, setIsFullscreen] = useState(false)
   
-  // Initialize WebSocket connection
+  // Load initial game state
   useEffect(() => {
-    if (gameId) {
+    const loadGameState = async () => {
+      if (!gameId) return
+      
+      setLoading(true)
+      try {
+        const gameState = await gameApi.getGame(gameId)
+        if (gameState) {
+          setGameState(gameState)
+        }
+      } catch (err) {
+        console.error('Failed to load game:', err)
+        setError('Failed to load game state')
+        addToast('error', 'Failed to load game. Returning to home.')
+        navigate('/')
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadGameState()
+  }, [gameId])
+  
+  // Initialize WebSocket connection (optional, for real-time updates)
+  useEffect(() => {
+    if (gameId && gameState) {
       const websocket = new GameWebSocket(gameId)
       
       websocket.onStateUpdate((state) => {
@@ -66,14 +90,16 @@ function GamePage() {
         )
       })
       
-      websocket.connect()
+      websocket.connect().catch(err => {
+        console.warn('WebSocket connection failed, game will work without real-time updates:', err)
+      })
       setWs(websocket)
       
       return () => {
         websocket.disconnect()
       }
     }
-  }, [gameId])
+  }, [gameId, gameState !== null])
   
   // Redirect if no game
   useEffect(() => {
@@ -91,24 +117,24 @@ function GamePage() {
     
     try {
       const result = await gameApi.performAction(gameId, action)
-      setGameState(result.state)
+      setGameState(result.game_state)
       
-      if (result.result) {
-        addToast('success', `Action successful: ${result.result}`)
+      if (result.message) {
+        addToast('success', `Action successful: ${result.message}`)
       }
       
       // Check if game over
-      if (result.state.gameOver) {
+      if (result.game_state.game_over) {
         addToast(
-          result.state.winner === 'defender' ? 'success' : 'warning',
-          `Game Over! ${result.state.winner?.charAt(0).toUpperCase()}${result.state.winner?.slice(1)} wins!`
+          result.game_state.winner === 'DEFENDER' ? 'success' : 'warning',
+          `Game Over! ${result.game_state.winner} wins!`
         )
         return
       }
       
       // If it's now AI's turn, trigger AI move
-      if (settings.playMode === 'vs_ai' && result.state.currentPlayer !== 'defender') {
-        await triggerAIMove(result.state)
+      if (settings.playMode === 'vs_ai' && result.game_state.current_player !== 'DEFENDER') {
+        await triggerAIMove(result.game_state)
       }
     } catch (err) {
       console.error('Action failed:', err)
@@ -142,7 +168,7 @@ function GamePage() {
       if (result.action) {
         // Execute the AI's chosen action
         const actionResult = await gameApi.performAction(gameId, result.action)
-        setGameState(actionResult.state)
+        setGameState(actionResult.game_state)
         
         addToast('info', `AI played: ${result.action.type}`)
       }
@@ -154,22 +180,11 @@ function GamePage() {
     }
   }, [gameId, settings.aiType, settings.aiDifficulty])
   
-  // Handle reset
+  // Handle reset - navigate to home to start new game
   const handleReset = useCallback(async () => {
-    if (!gameId) return
-    
-    setLoading(true)
-    try {
-      const result = await gameApi.resetGame(gameId)
-      setGameState(result.state)
-      setSelectedNode(null)
-      addToast('success', 'Game reset!')
-    } catch (err) {
-      addToast('error', 'Failed to reset game')
-    } finally {
-      setLoading(false)
-    }
-  }, [gameId])
+    navigate('/')
+    addToast('info', 'Start a new game from the home page')
+  }, [navigate])
   
   // Toggle fullscreen
   const toggleFullscreen = () => {
@@ -183,7 +198,7 @@ function GamePage() {
   }
   
   // Determine if it's player's turn
-  const isPlayerTurn = gameState?.currentPlayer === 'defender' || settings.playMode === 'pvp'
+  const isPlayerTurn = gameState?.current_player === 'DEFENDER' || settings.playMode === 'pvp'
   
   if (!gameState) {
     return (
